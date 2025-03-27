@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>City Air Quality - 3D Scatter Plot</title>
+    <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+    <style>
+      body { margin: 0; }
+    </style>
+  </head>
+  <body>
+    <a-scene background="color: #e0f7fa">
+      <a-camera position="0 2 8"></a-camera>
+      <a-entity light="type: ambient; intensity: 1.2"></a-entity>
+      <a-entity id="city" position="-3 0 -2"></a-entity>
+    </a-scene>
+
+    <script>
+      // 模拟城市空气监测数据
+      const stations = [
+        { name: 'Downtown', x: 0, y: 1, z: 0, pm: 35 },
+        { name: 'Industrial Area', x: 3, y: 1.5, z: 1, pm: 80 },
+        { name: 'Parkside', x: -2, y: 0.8, z: 2, pm: 20 },
+        { name: 'Residential West', x: 1, y: 0.5, z: -2, pm: 65 },
+        { name: 'Harbor', x: -1, y: 1, z: -1, pm: 120 },
+      ];
+
+      const colorScale = d3.scaleThreshold()
+        .domain([30, 60, 90, 120])
+        .range(["#81C784", "#FFEB3B", "#FF9800", "#F44336", "#B71C1C"]);
+
+      stations.forEach((d, i) => {
+        const sphere = document.createElement('a-sphere');
+        sphere.setAttribute('position', { x: d.x, y: d.y, z: d.z });
+        sphere.setAttribute('radius', 0.4);
+        sphere.setAttribute('color', colorScale(d.pm));
+        sphere.setAttribute('opacity', 0.9);
+
+        // 站点名称标签
+        const name = document.createElement('a-text');
+        name.setAttribute('value', d.name);
+        name.setAttribute('position', { x: d.x, y: d.y + 0.6, z: d.z });
+        name.setAttribute('align', 'center');
+        name.setAttribute('color', '#000');
+        name.setAttribute('width', 4);
+
+        // PM2.5 数值标签
+        const label = document.createElement('a-text');
+        label.setAttribute('value', `PM2.5: ${d.pm}`);
+        label.setAttribute('position', { x: d.x, y: d.y - 0.6, z: d.z });
+        label.setAttribute('align', 'center');
+        label.setAttribute('color', '#555');
+        label.setAttribute('width', 3);
+
+        document.getElementById('city').appendChild(sphere);
+        document.getElementById('city').appendChild(name);
+        document.getElementById('city').appendChild(label);
+      });
+    </script>
+  </body>
+</html>
