@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>VR City Data Dashboard</title>
+    <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+        }
+        .loading {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 24px;
+            z-index: 1000;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+    </style>
+</head>
+<body>
+    <div class="loading">Loading VR Experience...</div>
+    <a-scene>
+        <!-- Environment -->
+        <a-sky color="#1a1a1a"></a-sky>
+        <a-plane position="0 0 0" rotation="-90 0 0" width="30" height="30" color="#2a2a2a"></a-plane>
+        
+        <!-- Camera -->
+        <a-entity position="0 1.6 4">
+            <a-camera>
+                <a-cursor color="#4CC3D9" fuse="false"></a-cursor>
+            </a-camera>
+        </a-entity>
+
+        <!-- Lighting -->
+        <a-light type="ambient" color="#888888"></a-light>
+        <a-light type="directional" color="#ffffff" intensity="1" position="1 1 1"></a-light>
+
+        <!-- Main Dashboard Container -->
+        <a-entity id="dashboard" position="0 1.6 -3">
+            <!-- Title -->
+            <a-text value="City Data Dashboard" align="center" position="0 2.5 0" color="#ffffff" scale="2 2 2"></a-text>
+            
+            <!-- Time Period Selector -->
+            <a-entity position="-2 2 0">
+                <a-text value="Time Period:" align="right" color="#ffffff"></a-text>
+                <a-entity position="1 0 0">
+                    <a-text value="2023" id="time-period" color="#4CC3D9"></a-text>
+                </a-entity>
+            </a-entity>
+
+            <!-- Data Panels -->
+            <a-entity position="-3 0 0">
+                <!-- Population Panel -->
+                <a-box width="2" height="2" depth="0.1" color="#2a2a2a" position="0 1 0">
+                    <a-text value="Population" align="center" position="0 0.5 0.06" color="#ffffff"></a-text>
+                    <a-text value="8.5M" id="population-value" align="center" position="0 -0.5 0.06" color="#4CC3D9"></a-text>
+                </a-box>
+
+                <!-- GDP Panel -->
+                <a-box width="2" height="2" depth="0.1" color="#2a2a2a" position="0 -1 0">
+                    <a-text value="GDP" align="center" position="0 0.5 0.06" color="#ffffff"></a-text>
+                    <a-text value="$1.2T" id="gdp-value" align="center" position="0 -0.5 0.06" color="#4CC3D9"></a-text>
+                </a-box>
+            </a-entity>
+
+            <!-- 3D Bar Chart -->
+            <a-entity position="0 0 0" id="bar-chart">
+                <!-- Bars will be added dynamically -->
+            </a-entity>
+
+            <!-- Pie Chart -->
+            <a-entity position="3 0 0" id="pie-chart">
+                <!-- Pie segments will be added dynamically -->
+            </a-entity>
+
+            <!-- Controls -->
+            <a-entity position="0 -1.5 0">
+                <a-box width="1" height="0.5" depth="0.1" color="#4CC3D9" class="clickable" id="prev-year">
+                    <a-text value="Previous" align="center" position="0 0 0.06" color="#ffffff"></a-text>
+                </a-box>
+                <a-box width="1" height="0.5" depth="0.1" color="#4CC3D9" class="clickable" position="1.2 0 0" id="next-year">
+                    <a-text value="Next" align="center" position="0 0 0.06" color="#ffffff"></a-text>
+                </a-box>
+            </a-entity>
+        </a-entity>
+    </a-scene>
+
+    <script>
+        // Sample data
+        const cityData = {
+            2023: {
+                population: 8.5,
+                gdp: 1.2,
+                sectors: [
+                    { name: "Technology", value: 0.4, color: "#FF6B6B" },
+                    { name: "Finance", value: 0.3, color: "#4ECDC4" },
+                    { name: "Manufacturing", value: 0.2, color: "#45B7D1" },
+                    { name: "Services", value: 0.1, color: "#96CEB4" }
+                ],
+                monthlyData: [
+                    { month: "Jan", value: 85 },
+                    { month: "Feb", value: 92 },
+                    { month: "Mar", value: 88 },
+                    { month: "Apr", value: 95 },
+                    { month: "May", value: 90 },
+                    { month: "Jun", value: 98 }
+                ]
+            },
+            2022: {
+                population: 8.2,
+                gdp: 1.1,
+                sectors: [
+                    { name: "Technology", value: 0.35, color: "#FF6B6B" },
+                    { name: "Finance", value: 0.32, color: "#4ECDC4" },
+                    { name: "Manufacturing", value: 0.22, color: "#45B7D1" },
+                    { name: "Services", value: 0.11, color: "#96CEB4" }
+                ],
+                monthlyData: [
+                    { month: "Jan", value: 82 },
+                    { month: "Feb", value: 88 },
+                    { month: "Mar", value: 85 },
+                    { month: "Apr", value: 92 },
+                    { month: "May", value: 87 },
+                    { month: "Jun", value: 95 }
+                ]
+            }
+        };
+
+        let currentYear = 2023;
+
+        // Initialize visualization
+        function initVisualization() {
+            updateBarChart();
+            updatePieChart();
+            updateInfoPanels();
+            document.querySelector('.loading').style.display = 'none';
+        }
+
+        // Update bar chart
+        function updateBarChart() {
+            const barChart = document.querySelector('#bar-chart');
+            barChart.innerHTML = '';
+            
+            const data = cityData[currentYear].monthlyData;
+            const barWidth = 0.3;
+            const spacing = 0.4;
+            const maxHeight = 2;
+
+            data.forEach((d, i) => {
+                const height = (d.value / 100) * maxHeight;
+                const bar = document.createElement('a-box');
+                bar.setAttribute('position', `${i * spacing} ${height/2} 0`);
+                bar.setAttribute('width', barWidth);
+                bar.setAttribute('height', height);
+                bar.setAttribute('depth', '0.1');
+                bar.setAttribute('color', '#4CC3D9');
+                bar.setAttribute('class', 'clickable');
+                bar.setAttribute('data-month', d.month);
+                bar.setAttribute('data-value', d.value);
+
+                // Add hover effect
+                bar.addEventListener('mouseenter', function() {
+                    this.setAttribute('color', '#FFD700');
+                    showTooltip(d);
+                });
+                
+                bar.addEventListener('mouseleave', function() {
+                    this.setAttribute('color', '#4CC3D9');
+                    hideTooltip();
+                });
+
+                barChart.appendChild(bar);
+            });
+        }
+
+        // Update pie chart
+        function updatePieChart() {
+            const pieChart = document.querySelector('#pie-chart');
+            pieChart.innerHTML = '';
+            
+            const data = cityData[currentYear].sectors;
+            const radius = 1;
+            let startAngle = 0;
+
+            data.forEach(d => {
+                const angle = d.value * Math.PI * 2;
+                const endAngle = startAngle + angle;
+                
+                // Create pie segment
+                const segment = document.createElement('a-entity');
+                segment.setAttribute('position', '0 0 0');
+                segment.setAttribute('rotation', `${startAngle * (180/Math.PI)} 0 0`);
+                
+                const geometry = document.createElement('a-cylinder');
+                geometry.setAttribute('radius', radius);
+                geometry.setAttribute('height', '0.1');
+                geometry.setAttribute('theta-start', startAngle * (180/Math.PI));
+                geometry.setAttribute('theta-length', angle * (180/Math.PI));
+                geometry.setAttribute('color', d.color);
+                geometry.setAttribute('class', 'clickable');
+                geometry.setAttribute('data-sector', d.name);
+                geometry.setAttribute('data-value', d.value);
+
+                // Add hover effect
+                geometry.addEventListener('mouseenter', function() {
+                    this.setAttribute('color', '#FFD700');
+                    showTooltip(d);
+                });
+                
+                geometry.addEventListener('mouseleave', function() {
+                    this.setAttribute('color', d.color);
+                    hideTooltip();
+                });
+
+                segment.appendChild(geometry);
+                pieChart.appendChild(segment);
+                startAngle = endAngle;
+            });
+        }
+
+        // Update info panels
+        function updateInfoPanels() {
+            document.querySelector('#population-value').setAttribute('value', `${cityData[currentYear].population}M`);
+            document.querySelector('#gdp-value').setAttribute('value', `$${cityData[currentYear].gdp}T`);
+            document.querySelector('#time-period').setAttribute('value', currentYear.toString());
+        }
+
+        // Tooltip functions
+        function showTooltip(data) {
+            const tooltip = document.createElement('a-entity');
+            tooltip.setAttribute('id', 'tooltip');
+            tooltip.setAttribute('position', '0 2 0');
+            tooltip.setAttribute('text', {
+                value: `${data.month || data.name}: ${data.value}`,
+                color: '#ffffff',
+                align: 'center'
+            });
+            document.querySelector('a-scene').appendChild(tooltip);
+        }
+
+        function hideTooltip() {
+            const tooltip = document.querySelector('#tooltip');
+            if (tooltip) {
+                tooltip.parentNode.removeChild(tooltip);
+            }
+        }
+
+        // Year navigation
+        document.querySelector('#prev-year').addEventListener('click', function() {
+            if (currentYear > 2022) {
+                currentYear--;
+                initVisualization();
+            }
+        });
+
+        document.querySelector('#next-year').addEventListener('click', function() {
+            if (currentYear < 2023) {
+                currentYear++;
+                initVisualization();
+            }
+        });
+
+        // Initialize when scene is loaded
+        document.querySelector('a-scene').addEventListener('loaded', initVisualization);
+    </script>
+</body>
+</html> 
