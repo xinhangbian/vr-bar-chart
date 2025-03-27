@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>3D Scatter Plot - D3 + A-Frame</title>
+    <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+    <style>
+      body {
+        margin: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <a-scene background="color: #f0f0f0">
+      <!-- 摄像头和光照 -->
+      <a-camera position="0 1.6 5"></a-camera>
+      <a-entity light="type: ambient; intensity: 1.2"></a-entity>
+
+      <!-- 散点图容器 -->
+      <a-entity id="scatter" position="-2 0 -2"></a-entity>
+    </a-scene>
+
+    <script>
+      // 生成随机数据（x, y, z, value）
+      const data = d3.range(10).map(() => ({
+        x: Math.random() * 4,
+        y: Math.random() * 4,
+        z: Math.random() * 4,
+        value: Math.random()
+      }));
+
+      // 颜色比例尺
+      const colorScale = d3.scaleSequential()
+        .domain([0, 1])
+        .interpolator(d3.interpolateCool);
+
+      data.forEach((d, i) => {
+        const sphere = document.createElement('a-sphere');
+        sphere.setAttribute('position', { x: d.x, y: d.y, z: d.z });
+        sphere.setAttribute('radius', 0.2);
+        sphere.setAttribute('color', colorScale(d.value));
+
+        // 标签
+        const label = document.createElement('a-text');
+        label.setAttribute('value', `#${i}`);
+        label.setAttribute('position', { x: d.x, y: d.y + 0.3, z: d.z });
+        label.setAttribute('color', '#333');
+        label.setAttribute('align', 'center');
+        label.setAttribute('width', 2);
+
+        document.getElementById('scatter').appendChild(sphere);
+        document.getElementById('scatter').appendChild(label);
+      });
+    </script>
+  </body>
+</html>
