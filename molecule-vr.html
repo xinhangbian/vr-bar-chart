@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>3D Molecule Visualization in VR</title>
+    <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+        }
+        .loading {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 24px;
+            z-index: 1000;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        .info-panel {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+    <div class="loading">Loading Molecular Visualization...</div>
+    <div class="info-panel">
+        <h2>DNA Structure</h2>
+        <p>Use mouse to look around and click to select elements</p>
+    </div>
+    <a-scene>
+        <!-- Environment -->
+        <a-sky color="#1a1a1a"></a-sky>
+        <a-plane position="0 0 0" rotation="-90 0 0" width="30" height="30" color="#2a2a2a"></a-plane>
+        
+        <!-- Camera -->
+        <a-entity position="0 1.6 4">
+            <a-camera>
+                <a-cursor color="#4CC3D9" fuse="false"></a-cursor>
+            </a-camera>
+        </a-entity>
+
+        <!-- Lighting -->
+        <a-light type="ambient" color="#888888"></a-light>
+        <a-light type="directional" color="#ffffff" intensity="1" position="1 1 1"></a-light>
+
+        <!-- Main Container -->
+        <a-entity id="molecule-container" position="0 1.6 -2">
+            <!-- Title -->
+            <a-text value="DNA Structure" align="center" position="0 2.5 0" color="#ffffff" scale="2 2 2"></a-text>
+            
+            <!-- Controls -->
+            <a-entity position="0 -1.5 0">
+                <a-box width="1" height="0.5" depth="0.1" color="#4CC3D9" class="clickable" id="rotate-left">
+                    <a-text value="Rotate Left" align="center" position="0 0 0.06" color="#ffffff"></a-text>
+                </a-box>
+                <a-box width="1" height="0.5" depth="0.1" color="#4CC3D9" class="clickable" position="1.2 0 0" id="rotate-right">
+                    <a-text value="Rotate Right" align="center" position="0 0 0.06" color="#ffffff"></a-text>
+                </a-box>
+            </a-entity>
+
+            <!-- Molecule Structure -->
+            <a-entity id="dna-helix" position="0 0 0">
+                <!-- Base pairs will be added dynamically -->
+            </a-entity>
+        </a-entity>
+    </a-scene>
+
+    <script>
+        // DNA structure data
+        const dnaData = {
+            basePairs: [
+                { type: "A-T", color: "#FF6B6B", rotation: 0 },
+                { type: "T-A", color: "#4ECDC4", rotation: 36 },
+                { type: "C-G", color: "#45B7D1", rotation: 72 },
+                { type: "G-C", color: "#96CEB4", rotation: 108 },
+                { type: "A-T", color: "#FF6B6B", rotation: 144 },
+                { type: "T-A", color: "#4ECDC4", rotation: 180 },
+                { type: "C-G", color: "#45B7D1", rotation: 216 },
+                { type: "G-C", color: "#96CEB4", rotation: 252 },
+                { type: "A-T", color: "#FF6B6B", rotation: 288 },
+                { type: "T-A", color: "#4ECDC4", rotation: 324 }
+            ],
+            properties: {
+                "A-T": {
+                    description: "Adenine-Thymine pair",
+                    bondLength: "2.8 Å",
+                    bondAngle: "120°"
+                },
+                "T-A": {
+                    description: "Thymine-Adenine pair",
+                    bondLength: "2.8 Å",
+                    bondAngle: "120°"
+                },
+                "C-G": {
+                    description: "Cytosine-Guanine pair",
+                    bondLength: "3.0 Å",
+                    bondAngle: "120°"
+                },
+                "G-C": {
+                    description: "Guanine-Cytosine pair",
+                    bondLength: "3.0 Å",
+                    bondAngle: "120°"
+                }
+            }
+        };
+
+        let currentRotation = 0;
+        let isRotating = false;
+
+        // Initialize visualization
+        function initVisualization() {
+            createDNAHelix();
+            document.querySelector('.loading').style.display = 'none';
+        }
+
+        // Create DNA helix
+        function createDNAHelix() {
+            const helix = document.querySelector('#dna-helix');
+            helix.innerHTML = '';
+            
+            dnaData.basePairs.forEach((pair, i) => {
+                // Create base pair
+                const basePair = document.createElement('a-entity');
+                basePair.setAttribute('position', `0 ${i * 0.5} 0`);
+                basePair.setAttribute('rotation', `${pair.rotation} 0 0`);
+                
+                // Create atoms
+                const atom1 = createAtom(pair.color, -0.5, 0, 0);
+                const atom2 = createAtom(pair.color, 0.5, 0, 0);
+                
+                // Create bond
+                const bond = document.createElement('a-cylinder');
+                bond.setAttribute('position', '0 0 0');
+                bond.setAttribute('rotation', '90 0 0');
+                bond.setAttribute('height', '1');
+                bond.setAttribute('radius', '0.05');
+                bond.setAttribute('color', '#ffffff');
+                
+                basePair.appendChild(atom1);
+                basePair.appendChild(atom2);
+                basePair.appendChild(bond);
+                
+                // Add interaction
+                basePair.addEventListener('click', function() {
+                    showBasePairInfo(pair);
+                });
+                
+                helix.appendChild(basePair);
+            });
+        }
+
+        // Create atom sphere
+        function createAtom(color, x, y, z) {
+            const atom = document.createElement('a-sphere');
+            atom.setAttribute('position', `${x} ${y} ${z}`);
+            atom.setAttribute('radius', '0.2');
+            atom.setAttribute('color', color);
+            atom.setAttribute('class', 'clickable');
+            return atom;
+        }
+
+        // Show base pair information
+        function showBasePairInfo(pair) {
+            const info = dnaData.properties[pair.type];
+            const infoPanel = document.querySelector('.info-panel');
+            infoPanel.innerHTML = `
+                <h2>${pair.type} Base Pair</h2>
+                <p>${info.description}</p>
+                <p>Bond Length: ${info.bondLength}</p>
+                <p>Bond Angle: ${info.bondAngle}</p>
+            `;
+        }
+
+        // Rotation controls
+        document.querySelector('#rotate-left').addEventListener('click', function() {
+            const helix = document.querySelector('#dna-helix');
+            currentRotation -= 36;
+            helix.setAttribute('rotation', `0 ${currentRotation} 0`);
+        });
+
+        document.querySelector('#rotate-right').addEventListener('click', function() {
+            const helix = document.querySelector('#dna-helix');
+            currentRotation += 36;
+            helix.setAttribute('rotation', `0 ${currentRotation} 0`);
+        });
+
+        // Initialize when scene is loaded
+        document.querySelector('a-scene').addEventListener('loaded', initVisualization);
+    </script>
+</body>
+</html> 
