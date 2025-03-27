@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>3D GDP Visualization with D3 and A-Frame</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+        }
+        .info-panel {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            z-index: 1000;
+        }
+        .controls {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            z-index: 1000;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            margin: 0 5px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <div class="info-panel">
+        <h2>Global GDP Visualization</h2>
+        <p>Use mouse to look around and click to select cities</p>
+    </div>
+    <div class="controls">
+        <button onclick="toggleRotation()">Toggle Rotation</button>
+        <button onclick="resetView()">Reset View</button>
+    </div>
+    <a-scene>
+        <!-- Environment -->
+        <a-sky color="#ECECEC"></a-sky>
+        <a-plane position="0 0 0" rotation="-90 0 0" width="30" height="30" color="#CCCCCC"></a-plane>
+        
+        <!-- Camera -->
+        <a-entity position="0 1.6 4">
+            <a-camera>
+                <a-cursor color="#4CC3D9" fuse="false"></a-cursor>
+            </a-camera>
+        </a-entity>
+
+        <!-- Lighting -->
+        <a-light type="ambient" color="#888888"></a-light>
+        <a-light type="directional" color="#ffffff" intensity="1" position="1 1 1"></a-light>
+
+        <!-- Container for bars -->
+        <a-entity id="bars-container" position="-5 0 -5"></a-entity>
+    </a-scene>
+
+    <script>
+        // Sample data
+        const data = [
+            { city: "New York", gdp: 1.7, color: "#FF6B6B" },
+            { city: "London", gdp: 1.5, color: "#4ECDC4" },
+            { city: "Tokyo", gdp: 1.9, color: "#45B7D1" },
+            { city: "Paris", gdp: 1.2, color: "#96CEB4" },
+            { city: "Shanghai", gdp: 1.6, color: "#FFEEAD" }
+        ];
+
+        // Create bars
+        const container = document.querySelector('#bars-container');
+        let isRotating = false;
+
+        data.forEach((d, i) => {
+            const bar = document.createElement('a-box');
+            bar.setAttribute('position', `${i * 2} ${d.gdp/2} 0`);
+            bar.setAttribute('width', '1.5');
+            bar.setAttribute('height', d.gdp);
+            bar.setAttribute('depth', '1.5');
+            bar.setAttribute('color', d.color);
+            bar.setAttribute('class', 'bar');
+            bar.setAttribute('data-city', d.city);
+            bar.setAttribute('data-gdp', d.gdp);
+            
+            // Add A-Frame event listeners
+            bar.addEventListener('mouseenter', function() {
+                this.setAttribute('color', '#FFD700');
+                showInfo(d);
+            });
+            
+            bar.addEventListener('mouseleave', function() {
+                this.setAttribute('color', d.color);
+                hideInfo();
+            });
+
+            // Add raycaster events
+            bar.addEventListener('raycaster-intersected', function() {
+                this.setAttribute('color', '#FFD700');
+                showInfo(d);
+            });
+            
+            bar.addEventListener('raycaster-intersected-cleared', function() {
+                this.setAttribute('color', d.color);
+                hideInfo();
+            });
+
+            container.appendChild(bar);
+        });
+
+        // Info panel functions
+        function showInfo(data) {
+            const infoPanel = document.querySelector('.info-panel');
+            infoPanel.innerHTML = `
+                <h2>${data.city}</h2>
+                <p>GDP: $${data.gdp} Trillion</p>
+            `;
+        }
+
+        function hideInfo() {
+            const infoPanel = document.querySelector('.info-panel');
+            infoPanel.innerHTML = `
+                <h2>Global GDP Visualization</h2>
+                <p>Use mouse to look around and click to select cities</p>
+            `;
+        }
+
+        // Control functions
+        function toggleRotation() {
+            isRotating = !isRotating;
+            if (isRotating) {
+                container.setAttribute('animation', {
+                    property: 'rotation',
+                    to: '0 360 0',
+                    loop: true,
+                    dur: 10000
+                });
+            } else {
+                container.removeAttribute('animation');
+            }
+        }
+
+        function resetView() {
+            const camera = document.querySelector('a-camera');
+            camera.setAttribute('position', '0 1.6 4');
+            camera.setAttribute('rotation', '0 0 0');
+            container.setAttribute('rotation', '0 0 0');
+            isRotating = false;
+            container.removeAttribute('animation');
+        }
+
+        // Add click event to bars
+        document.querySelectorAll('.bar').forEach(bar => {
+            bar.addEventListener('click', function() {
+                const city = this.getAttribute('data-city');
+                const gdp = this.getAttribute('data-gdp');
+                const position = this.getAttribute('position');
+                
+                // Move camera to focus on selected bar
+                const camera = document.querySelector('a-camera');
+                camera.setAttribute('position', `${position.x} ${position.y + 2} ${position.z + 3}`);
+                camera.setAttribute('look-at', position);
+                
+                // Show info
+                showInfo({ city, gdp: parseFloat(gdp) });
+            });
+        });
+    </script>
+</body>
+</html> 
