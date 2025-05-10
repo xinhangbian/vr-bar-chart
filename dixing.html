@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>A-Frame + D3.js 山脉与建筑地形图</title>
+  <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>body { margin: 0; }</style>
+</head>
+<body>
+  <a-scene background="color: #ECECEC">
+    <!-- 灯光 -->
+    <a-light type="ambient" color="#ccc"></a-light>
+    <a-light type="directional" position="0 5 5" intensity="1.0"></a-light>
+
+    <!-- 相机和控制器 -->
+    <a-entity position="0 20 50">
+      <a-camera wasd-controls-enabled="true" look-controls="true"></a-camera>
+    </a-entity>
+
+    <!-- 地面 -->
+    <a-plane rotation="-90 0 0" width="100" height="100" color="#7BC8A4"></a-plane>
+  </a-scene>
+
+  <script>
+    // 示例数据（可替换为完整的 JSON 数据）
+    const data = [
+      { x: -10, y: 0.5, z: -10 },
+      { x: -5, y: 1.2, z: -5 },
+      { x: 0, y: 0.8, z: 0 },
+      { x: 10, y: 0.4, z: 10 },
+      { x: 22, y: 1.5, z: 22 },   // 建筑区域
+      { x: 23, y: 1.5, z: 23 },
+      { x: -7, y: 2.0, z: -7 },   // 建筑区域
+      { x: -6, y: 2.0, z: -6 },
+      // ...你可以从上面导出的 CSV 数据自动填充
+    ];
+
+    const scene = d3.select("a-scene");
+
+    const colorScale = d3.scaleSequential(d3.interpolateViridis)
+                         .domain(d3.extent(data, d => d.y));
+
+    data.forEach(d => {
+      if (d.y >= 1.5) {
+        // 建筑物用立方体
+        scene.append("a-box")
+          .attr("position", `${d.x} ${d.y / 2} ${d.z}`)
+          .attr("depth", 1)
+          .attr("height", d.y)
+          .attr("width", 1)
+          .attr("color", "#666");
+      } else {
+        // 地形用球表示
+        scene.append("a-sphere")
+          .attr("position", `${d.x} ${d.y} ${d.z}`)
+          .attr("radius", 0.3)
+          .attr("color", colorScale(d.y));
+      }
+    });
+  </script>
+</body>
+</html>
+
